@@ -64,7 +64,11 @@ jobs:
           path: opt
           destination: dist
 
+      - name: Git describe
+        run: echo "REPO_VERSION=$(git describe --tags)" >> $GITHUB_ENV
+
       - name: Upload WASM
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-          path: dist
+          path: dist/
+          name: agda-wasm-${{ env.REPO_VERSION }}

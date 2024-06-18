@@ -1,5 +1,5 @@
 diff --git a/Agda.cabal b/Agda.cabal
-index b7cdd278f..03f621795 100644
+index 6f4ec2095..989f4c5bb 100644
 --- a/Agda.cabal
 +++ b/Agda.cabal
 @@ -1,7 +1,7 @@
@@ -11,28 +11,28 @@ index b7cdd278f..03f621795 100644
  license:         MIT
  license-file:    LICENSE
  copyright:       (c) 2005-2024 The Agda Team.
-@@ -199,13 +199,13 @@ flag optimise-heavily
+@@ -200,13 +200,13 @@ flag optimise-heavily
  -- Setup
  ---------------------------------------------------------------------------
  
 -custom-setup
 -  setup-depends:
--    , base      >= 4.12.0.0 && < 4.20
--    , Cabal     >= 2.4.0.1  && < 3.11
+-    , base      >= 4.12.0.0 && < 4.21
+-    , Cabal     >= 2.4.0.1  && < 3.13
 -    , directory >= 1.3.3.0  && < 1.4
--    , filepath  >= 1.4.2.1  && < 1.5
+-    , filepath  >= 1.4.2.1  && < 1.6
 -    , process   >= 1.6.3.0  && < 1.7
 +-- custom-setup
 +--   setup-depends:
-+--     , base      >= 4.12.0.0 && < 4.20
-+--     , Cabal     >= 2.4.0.1  && < 3.11
++--     , base      >= 4.12.0.0 && < 4.21
++--     , Cabal     >= 2.4.0.1  && < 3.13
 +--     , directory >= 1.3.3.0  && < 1.4
-+--     , filepath  >= 1.4.2.1  && < 1.5
++--     , filepath  >= 1.4.2.1  && < 1.6
 +--     , process   >= 1.6.3.0  && < 1.7
  
  -- Common stanzas
  ---------------------------------------------------------------------------
-@@ -357,6 +357,9 @@ library
+@@ -358,6 +358,9 @@ library
  
    hs-source-dirs:   src/full
  
@@ -42,16 +42,16 @@ index b7cdd278f..03f621795 100644
    -- Andreas, 2021-03-10:
    -- All packages we depend upon should be mentioned in an unconditional
    -- build-depends field, but additional restrictions on their
-@@ -419,7 +422,7 @@ library
+@@ -420,7 +423,7 @@ library
      , exceptions           >= 0.8       && < 0.11
-     , filepath             >= 1.4.2.1   && < 1.5
+     , filepath             >= 1.4.2.1   && < 1.6
      , ghc-compact          == 0.1.*
 -    , gitrev               >= 1.3.1     && < 2
 +    -- , gitrev               >= 1.3.1     && < 2
      -- hashable 1.2.0.10 makes library-test 10x
      -- slower. The issue was fixed in hashable 1.2.1.0.
      -- https://github.com/tibbe/hashable/issues/57.
-@@ -443,6 +446,7 @@ library
+@@ -444,6 +447,7 @@ library
      , time-compat          >= 1.9.2     && < 1.10
          -- time-compat adds needed functionality missing in time < 1.9
      , transformers         >= 0.5.5.0   && < 0.7
@@ -59,7 +59,7 @@ index b7cdd278f..03f621795 100644
      , unordered-containers >= 0.2.9.0   && < 0.3
          -- unordered-containers < 0.2.9 need base < 4.11
      , uri-encode           >= 1.5.0.4   && < 1.6
-@@ -864,10 +868,12 @@ executable agda
+@@ -865,10 +869,12 @@ executable agda
    -- been idle for 0.3 s. This feature turned out to be annoying, so
    -- the idle GC is now by default turned off (-I0).
    ghc-options:
