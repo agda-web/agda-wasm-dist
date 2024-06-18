@@ -42,7 +42,7 @@ RUN --mount=type=cache,target=/var/cache/apt \
 
 ARG GHC_VER
 
-FROM haskell:${GHC_VER}-slim AS local-cabal
+FROM haskell:${GHC_VER}-slim-buster AS local-cabal
 
 ENV CABAL_DIR=/root/.cabal
 
