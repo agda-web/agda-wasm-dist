@@ -63,9 +63,9 @@ index 6f4ec2095..989f4c5bb 100644
      , vector-hashtables    >= 0.1.1.1   && < 0.2
      , zlib                 >= 0.6       && < 0.8
  
-+    if arch(wasm32)
-+      build-depends:
-+        unix               >= 2.8.0.0   && < 2.9
++  if arch(wasm32)
++    build-depends:
++      unix                 >= 2.8.0.0   && < 2.9
 +
    -- We don't write upper bounds for Alex nor Happy because the
    -- `build-tool-depends` field can not be modified in Hackage.
