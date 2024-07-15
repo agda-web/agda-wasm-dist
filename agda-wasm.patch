@@ -1,5 +1,5 @@
 diff --git a/Agda.cabal b/Agda.cabal
-index 6f4ec2095..989f4c5bb 100644
+index 6f4ec2095..1e68f861e 100644
 --- a/Agda.cabal
 +++ b/Agda.cabal
 @@ -1,7 +1,7 @@
@@ -59,7 +59,7 @@ index 6f4ec2095..989f4c5bb 100644
      , unordered-containers >= 0.2.9.0   && < 0.3
          -- unordered-containers < 0.2.9 need base < 4.11
      , uri-encode           >= 1.5.0.4   && < 1.6
-@@ -451,6 +451,10 @@ library
+@@ -451,6 +455,10 @@ library
      , vector-hashtables    >= 0.1.1.1   && < 0.2
      , zlib                 >= 0.6       && < 0.8
  
@@ -70,7 +70,7 @@ index 6f4ec2095..989f4c5bb 100644
    -- We don't write upper bounds for Alex nor Happy because the
    -- `build-tool-depends` field can not be modified in Hackage.
    build-tool-depends:
-@@ -865,10 +869,12 @@ executable agda
+@@ -865,10 +873,12 @@ executable agda
    -- been idle for 0.3 s. This feature turned out to be annoying, so
    -- the idle GC is now by default turned off (-I0).
    ghc-options:
@@ -84,6 +84,37 @@ index 6f4ec2095..989f4c5bb 100644
  -- agda-mode executable
  ---------------------------------------------------------------------------
  
+diff --git a/src/full/Agda/Interaction/AgdaTop.hs b/src/full/Agda/Interaction/AgdaTop.hs
+index 4b12c5dba..38cd1d158 100644
+--- a/src/full/Agda/Interaction/AgdaTop.hs
++++ b/src/full/Agda/Interaction/AgdaTop.hs
+@@ -1,4 +1,5 @@
+ {-# OPTIONS_GHC -Wunused-imports #-}
++{-# Language CPP #-}
+ 
+ module Agda.Interaction.AgdaTop
+     ( repl
+@@ -22,11 +23,20 @@ import Agda.Interaction.Options
+ import Agda.TypeChecking.Monad
+ import qualified Agda.TypeChecking.Monad.Benchmark as Bench
+ 
++#if defined(wasm32_HOST_ARCH)
++import System.Posix.IO              ( stdInput, setFdOption, FdOption(..) )
++#endif
++
+ ----------------------------------
+ 
+ -- | 'repl' is a fake ghci interpreter for both the Emacs the JSON frontend
+ repl :: InteractionOutputCallback -> String -> TCM () -> TCM ()
+ repl callback prompt setup = do
++
++#if defined(wasm32_HOST_ARCH)
++    liftIO $ setFdOption stdInput NonBlockingRead True
++#endif
++
+     liftIO $ do
+       hSetBuffering stdout LineBuffering
+       hSetBuffering stdin  LineBuffering
 diff --git a/src/full/Agda/Interaction/Library.hs b/src/full/Agda/Interaction/Library.hs
 index 3b813194b..41b17e2b9 100644
 --- a/src/full/Agda/Interaction/Library.hs
