@@ -64,7 +64,7 @@ jobs:
       - name: Pull WASM from Docker image
         uses: shrink/actions-docker-extract@v3
         with:
-          image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ steps.push.outputs.digest }}
           path: opt
           destination: dist
 
