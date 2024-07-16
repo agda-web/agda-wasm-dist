@@ -9,7 +9,7 @@ from collections import namedtuple
 from functools import partial
 
 
-for cmd in ['curl', 'unzip', 'tar']:
+for cmd in ['curl', 'unzip', 'tar', 'xz']:
     if which(cmd) is None:
         print(f'This script requires {cmd}')
         sys.exit(1)
@@ -145,8 +145,14 @@ def setup_wasi_sdk():
              'out/libffi-wasm/lib/.',
              f'{PREFIX}/wasi-sdk/share/wasi-sysroot/lib/wasm32-wasi'])
 
+    print('--- Setting up binaryen ---')
+    if path_is_fresh('binaryen/bin'):
+        run_cmd(['mkdir', '-p', 'binaryen'])
+        run_curl(jq_autogen('binaryen'), 'binaryen', pipe_to='tar xz -C %s --strip-components=1')
+        run_cmd(['cp', 'binaryen/bin/wasm-opt', f'{WASI_SDK_ROOT}/bin'])
+
 # utilities are NOT included, please install them by yourself:
-#   deno, nodejs, bun, binaryen, wabt, wasmtime, wasmedge, wazero
+#   deno, nodejs, bun, wabt, wasmtime, wasmedge, wazero
 
 def setup_proot():
     pass
