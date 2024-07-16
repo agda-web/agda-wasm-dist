@@ -27,11 +27,12 @@ COPY ${AGDA_PATCH} /root/agda-wasm.patch
 
 WORKDIR /root
 
+# wabt binaryen are for wasm-opt
 RUN --mount=type=cache,target=/var/cache/apt \
     apt update -y && \
     apt upgrade -y && \
     apt install -y --no-install-recommends \
-      git ca-certificates make xz-utils curl unzip python3 && \
+      git ca-certificates make xz-utils curl unzip python3 wabt binaryen && \
     git config --global init.defaultBranch dontcare && \
     git config --global advice.detachedHead false && \
     git clone --depth=1 --branch "$AGDA_BRANCH" https://github.com/agda/agda.git /root/agda && \
@@ -83,7 +84,8 @@ RUN --mount=type=cache,id=wasm-cabal,target=/root/.ghc-wasm/.cabal \
     wasm32-wasi-cabal configure -O2 && \
     wasm32-wasi-cabal build --only-dependencies && \
     wasm32-wasi-cabal build -foptimise-heavily && \
-    cp -r src/data/lib $(wasm32-wasi-cabal list-bin agda) /opt
+    cp -r src/data/lib $(wasm32-wasi-cabal list-bin agda) /opt && \
+    wasm-opt /opt/agda.wasm -O2 -o /opt/agda-opt.wasm
 
 # FIXME: type check built-ins (we have not executed Setup.hs)
 # TODO: emacs mode
@@ -95,4 +97,4 @@ FROM alpine:latest AS final
 
 COPY --from=build /opt /opt
 
-ENTRYPOINT sh
+ENTRYPOINT ['sh']
