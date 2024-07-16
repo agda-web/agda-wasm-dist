@@ -80,10 +80,13 @@ RUN --mount=type=cache,id=wasm-cabal,target=/root/.ghc-wasm/.cabal \
 RUN --mount=type=cache,id=wasm-cabal,target=/root/.ghc-wasm/.cabal \
     cd agda && \
     . /root/.ghc-wasm/env && \
+    wasm32-wasi-cabal update && \
     wasm32-wasi-cabal configure -O2 && \
     wasm32-wasi-cabal build -j --enable-split-sections --only-dependencies && \
     wasm32-wasi-cabal build -j --enable-split-sections -foptimise-heavily && \
     cp -r src/data/lib $(wasm32-wasi-cabal list-bin agda) /opt && \
+
+RUN . /root/.ghc-wasm/env && \
     wasm-opt --version && \
     wasm-opt /opt/agda.wasm -Oz -o /opt/agda-opt.wasm
 
