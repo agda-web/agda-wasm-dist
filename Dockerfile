@@ -84,6 +84,7 @@ RUN --mount=type=cache,id=wasm-cabal,target=/root/.ghc-wasm/.cabal \
     wasm32-wasi-cabal build -j --enable-split-sections --only-dependencies && \
     wasm32-wasi-cabal build -j --enable-split-sections -foptimise-heavily && \
     cp -r src/data/lib $(wasm32-wasi-cabal list-bin agda) /opt && \
+    wasm-opt --version && \
     wasm-opt /opt/agda.wasm -Oz -o /opt/agda-opt.wasm
 
 # FIXME: type check built-ins (we have not executed Setup.hs)
