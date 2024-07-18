@@ -18,8 +18,8 @@ You need to specify a handful of configurations for it to work correctly:
 
 - **The global config directory**: The value can be obtained via flag `--print-agda-app-dir`, serving as the source of Agda's [library management system](https://agda.readthedocs.io/en/latest/tools/package-system.html#package-system). The default path is `$HOME/.config/agda`, and you can override with the enviroment variable `AGDA_DIR`.
 
-- **Built-in library path**: The value can be obtained via flag `--print-agda-data-dir`, but you can override it with the environment variable `Agda_datadir`. It must contain a directory structure `lib/prim/...`. The content can be copied from Agda's source tree under `src/data` or from the Docker image. \
-  Tip: If you are in a hurry, the minimal requirement to run Agda is these two files `Agda/Primitive/{Primitive,Cubical}.agda`.
+- **Built-in library path**: The value can be obtained via flag `--print-agda-data-dir`, but you can override it with the environment variable `Agda_datadir`. It must contain a directory structure `lib/prim/Agda/...`. The content can be copied from Agda's source tree under `src/data` or from the Docker image. \
+  Tip: The minimal requirement to run Agda is these two files `Agda/Primitive.agda` and `Agda/Primitive/Cubical.agda`.
 
 - **Interaction mode quirk**: If you are running interaction mode, you need a runtime that supports [switching stdin to nonblocking](https://hackmd.io/@q/wasi-nonblocking-stdin), and use a [newer](https://github.com/agda-web/agda-wasm-dist/commit/a3d2a3112960a27ac51bd8a9e0a41c342a97dca3) artifact with [an RTS option](https://downloads.haskell.org/ghc/9.8.1/docs/users_guide/profiling.html#rts-flag--V%20%E2%9F%A8secs%E2%9F%A9) `-V1` since the default value for WASM suffers from thrashing. Any value greater than zero works.
 
