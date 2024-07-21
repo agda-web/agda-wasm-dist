@@ -10,18 +10,20 @@ Distributions of Agda executable compiled into WebAssembly. An online demo can b
 
 You need to specify a handful of configurations for it to work correctly:
 
-- **Filesystem layout**: At least the directories listed below must be pre-opened.
+- **Filesystem layout**: The directory specified in **Built-in library path** must be accessible. All other directories are optional.
 
 - **Current working directory**: This is set by environment variable `PWD`. Forwarding it from the shell is sufficient.
 
-- **The home directory**: This is used to expand `~` in paths. This setting is mandatory, otherwise Agda will fallback to determine the effective UID and fail.
+- **The home directory**: This is used to expand `~` in paths. **This setting is mandatory**, otherwise Agda will fallback to probing the effective UID and fail.
 
 - **The global config directory**: The value can be obtained via flag `--print-agda-app-dir`, serving as the source of Agda's [library management system](https://agda.readthedocs.io/en/latest/tools/package-system.html#package-system). The default path is `$HOME/.config/agda`, and you can override with the enviroment variable `AGDA_DIR`.
 
 - **Built-in library path**: The value can be obtained via flag `--print-agda-data-dir`, but you can override it with the environment variable `Agda_datadir`. It must contain a directory structure `lib/prim/Agda/...`. The content can be copied from Agda's source tree under `src/data` or from the Docker image. \
   Tip: The minimal requirement to run Agda is these two files `Agda/Primitive.agda` and `Agda/Primitive/Cubical.agda`.
 
-- **Interaction mode quirk**: If you are running interaction mode, you need a runtime that supports [switching stdin to nonblocking](https://hackmd.io/@q/wasi-nonblocking-stdin), and use a [newer](https://github.com/agda-web/agda-wasm-dist/commit/a3d2a3112960a27ac51bd8a9e0a41c342a97dca3) artifact with [an RTS option](https://downloads.haskell.org/ghc/9.8.1/docs/users_guide/profiling.html#rts-flag--V%20%E2%9F%A8secs%E2%9F%A9) `-V1` since the default value for WASM suffers from thrashing. Any value greater than zero works.
+### Quirks of interaction mode
+
+If you are running interaction mode, you need a runtime that supports [switching stdin to nonblocking](https://hackmd.io/@q/wasi-nonblocking-stdin) or something equivalent (i.e., never blocks on stdin), and use a [newer](https://github.com/agda-web/agda-wasm-dist/commit/a3d2a3112960a27ac51bd8a9e0a41c342a97dca3) artifact with [an RTS option](https://downloads.haskell.org/ghc/9.8.1/docs/users_guide/profiling.html#rts-flag--V%20%E2%9F%A8secs%E2%9F%A9) `-V1` since the default value for WASM suffers from thrashing. Any value greater than zero works.
 
 ## Sample commands
 
