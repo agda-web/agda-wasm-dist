@@ -1,6 +1,6 @@
 # agda-wasm-dist
 
-Distributions of Agda executable compiled into WebAssembly.
+Distributions of Agda executable compiled into WebAssembly. An online demo can be seen [here](https://observablehq.com/@qbane/agda-web).
 
 ## Quickstart
 
