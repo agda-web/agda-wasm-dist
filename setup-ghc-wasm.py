@@ -15,7 +15,7 @@ for cmd in ['curl', 'unzip', 'tar', 'xz']:
         sys.exit(1)
 
 print_err = partial(print, file=sys.stderr)
-HostVars = namedtuple('HostVars', 'HOST WASI_SDK WASMTIME WASMEDGE WAZERO NODEJS DENO BUN CABAL BINARYEN GHC FLAVOUR')
+HostVars = namedtuple('HostVars', 'HOST WASI_SDK WASI_SDK_JOB_NAME WASI_SDK_ARTIFACT_PATH WASMTIME NODEJS CABAL BINARYEN GHC FLAVOUR')
 
 def run_cmd(arg, **kwargs):
     is_shell = isinstance(arg, str)
@@ -34,12 +34,12 @@ def jq_autogen(name):
         data = json.load(f)
     return data[name]['url']
 
-def run_curl(url, dest, *, pipe_to=None):
+def run_curl(url, dest, *, pipe_to=None, **kwargs):
     cmd = f'curl -f -L --retry 5 {quote(url)}'
     tail = '-o %s'
     if pipe_to is not None:
         tail = '| ' + pipe_to
-    run_cmd(cmd + ' ' + (tail % quote(dest)))
+    return run_cmd(cmd + ' ' + (tail % quote(dest)), **kwargs)
 
 def path_is_fresh(s):
     if os.path.exists(s):
@@ -59,65 +59,70 @@ cabal_prefix = f'{PREFIX}/wasm32-wasi-cabal'
 
 
 def host_specific():
-    print(f'Selecting Host: ({OS}, {ARCH})')
+    flavour = os.environ.get('FLAVOUR', '9.12')
+    print(f'Selecting Host: ({OS}, {ARCH}) with flavour: "{flavour}"')
+
     if OS == 'Linux' and ARCH == 'x86_64':
-        flavour = os.environ.get('FLAVOUR', 'gmp')
         return HostVars(
             'x86_64-linux',
             'wasi-sdk',
+            'x86_64-linux',
+            'dist/wasi-sdk-25.0-x86_64-linux.tar.gz',
             'wasmtime',
-            'wasmedge',
-            'wazero',
             'nodejs',
-            'deno',
-            'bun',
             'cabal',
             'binaryen',
             f'wasm32-wasi-ghc-{flavour}',
             flavour)
+
     if OS == 'Linux' and ARCH == 'aarch64':
+        if flavour not in {'9.10', '9.12'}:
+            flavour += '###unsupported###'
+
         return HostVars(
             'aarch64-linux',
-            'wasi-sdk_aarch64_linux',
+            'wasi-sdk-aarch64-linux',
+            'aarch64-linux',
+            'dist/wasi-sdk-25.0-aarch64-linux.tar.gz',
             'wasmtime_aarch64_linux',
-            'wasmedge_aarch64_linux',
-            'wazero_aarch64_linux',
             'nodejs_aarch64_linux',
-            'deno_aarch64_linux',
-            'bun_aarch64_linux',
             'cabal_aarch64_linux',
             'binaryen_aarch64_linux',
-            'wasm32-wasi-ghc-gmp-aarch64-linux',
-            'gmp')
+            f'wasm32-wasi-ghc-gmp-aarch64-linux-{flavour}',
+            'flavour')
+
     if OS == 'Darwin' and ARCH == 'arm64':
+        if flavour not in {'9.10', '9.12'}:
+            flavour += '###unsupported###'
+
         return HostVars(
             'aarch64-apple-darwin',
-            'wasi-sdk_darwin',
+            'wasi-sdk-aarch64-darwin',
+            'aarch64-darwin',
+            'dist/wasi-sdk-25.0-arm64-macos.tar.gz',
             'wasmtime_aarch64_darwin',
-            'wasmedge_aarch64_darwin',
-            'wazero_aarch64_darwin',
             'nodejs_aarch64_darwin',
-            'deno_aarch64_darwin',
-            'bun_aarch64_darwin',
             'cabal_aarch64_darwin',
             'binaryen_aarch64_darwin',
-            'wasm32-wasi-ghc-gmp-aarch64-darwin',
-            'gmp')
+            f'wasm32-wasi-ghc-gmp-aarch64-darwin-{flavour}',
+            flavour)
+
     if OS == 'Darwin' and ARCH == 'x86_64':
+        flavour += '###unsupported###'
+
         return HostVars(
             'x86_64-apple-darwin',
-            'wasi-sdk_darwin',
+            'wasi-sdk-x86_64-darwin',
+            'x86_64-darwin',
+            'dist/wasi-sdk-25.0-arm64-macos.tar.gz',
             'wasmtime_x86_64_darwin',
-            'wasmedge_x86_64_darwin',
-            'wazero_x86_64_darwin',
             'nodejs_x86_64_darwin',
-            'deno_x86_64_darwin',
-            'bun_x86_64_darwin',
             'cabal_x86_64_darwin',
             'binaryen_x86_64_darwin',
             'wasm32-wasi-ghc-gmp-x86_64-darwin',
             'gmp')
-    print(f'Host not supported: ({OS}, {ARCH})')
+
+    print(f'Host not supported: ({OS}, {ARCH}, {flavour})')
     sys.exit(1)
 
 
@@ -128,9 +133,11 @@ GHC_TMP_DIR = f'{REPO}/ghc.{HOST_VARS.FLAVOUR}'
 def setup_wasi_sdk():
     print('--- Setting up WASI SDK ---')
     if path_is_fresh(WASI_SDK_ROOT):
+        # TODO: support specifying UPSTREAM_WASI_SDK_JOB_ID
+        wasi_sdk_bindist = jq_autogen(HOST_VARS.WASI_SDK)
+        print(f'Installing wasi-sdk from {wasi_sdk_bindist}')
         run_cmd(['mkdir', '-p', WASI_SDK_ROOT])
-        wasi_sdk_url = jq_autogen(HOST_VARS.WASI_SDK)
-        run_curl(wasi_sdk_url, WASI_SDK_ROOT, pipe_to='tar xz -C %s --strip-components=1')
+        run_curl(wasi_sdk_bindist, WASI_SDK_ROOT, pipe_to='tar xz -C %s --no-same-owner --strip-components=1')
 
     print('--- Setting up ffi-wasm ---')
     ffi_wasm_dest = f'out/libffi-wasm'
@@ -140,7 +147,7 @@ def setup_wasi_sdk():
 
     run_cmd(['cp', '-a',
              'out/libffi-wasm/include/.',
-             f'{PREFIX}/wasi-sdk/share/wasi-sysroot/include'])
+             f'{PREFIX}/wasi-sdk/share/wasi-sysroot/include/wasm32-wasi'])
     run_cmd(['cp', '-a',
              'out/libffi-wasm/lib/.',
              f'{PREFIX}/wasi-sdk/share/wasi-sysroot/lib/wasm32-wasi'])
@@ -148,11 +155,11 @@ def setup_wasi_sdk():
     print('--- Setting up binaryen ---')
     if path_is_fresh('binaryen/bin'):
         run_cmd(['mkdir', '-p', 'binaryen'])
-        run_curl(jq_autogen('binaryen'), 'binaryen', pipe_to='tar xz -C %s --strip-components=1')
+        run_curl(jq_autogen('binaryen'), 'binaryen', pipe_to='tar xz -C %s --no-same-owner --strip-components=1')
         run_cmd(['cp', 'binaryen/bin/wasm-opt', f'{WASI_SDK_ROOT}/bin'])
 
 # utilities are NOT included, please install them by yourself:
-#   deno, nodejs, bun, wabt, wasmtime, wasmedge, wazero
+#   nodejs, wabt, wasmtime
 
 def setup_proot():
     pass
@@ -165,9 +172,9 @@ def write_to_github_script():
     pass
 
 # should sync with setup.sh
-cc_opts  = '-fno-strict-aliasing -Wno-error=implicit-function-declaration -Wno-error=int-conversion -O3 -msimd128 -mnontrapping-fptoint -msign-ext -mbulk-memory -mmutable-globals -mmultivalue -mreference-types'
-cxx_opts = '-fno-exceptions -fno-strict-aliasing -Wno-error=implicit-function-declaration -Wno-error=int-conversion -O3 -msimd128 -mnontrapping-fptoint -msign-ext -mbulk-memory -mmutable-globals -mmultivalue -mreference-types'
-ld_opts  = '-Wl,--compress-relocations,--error-limit=0,--growable-table,--keep-section=ghc_wasm_jsffi,--stack-first,--strip-debug '
+cc_opts  = '-Wno-error=int-conversion -O3 -msimd128 -mnontrapping-fptoint -msign-ext -mbulk-memory -mmutable-globals -mmultivalue -mreference-types'
+cxx_opts = '-fno-exceptions -Wno-error=int-conversion -O3 -msimd128 -mnontrapping-fptoint -msign-ext -mbulk-memory -mmutable-globals -mmultivalue -mreference-types'
+ld_opts  = '-Wl,--error-limit=0,--keep-section=ghc_wasm_jsffi,--keep-section=target_features,--stack-first,--strip-debug '
 
 _EXTRA_ENVS = {
   'CONF_CC_OPTS_STAGE2': cc_opts,
@@ -185,13 +192,13 @@ configure_args = f'--host={HOST_VARS.HOST} --target=wasm32-wasi --with-intree-gm
 
 
 def check_compilers():
-    wasi_which = partial(which, path=f'{WASI_SDK_ROOT}/bin:' + os.environ.get('PATH'))
+    wasi_which = partial(which, path=f'{WASI_SDK_ROOT}/bin:' + os.environ.get('PATH', ''))
 
     envs = {
       'AR': wasi_which('llvm-ar'),
-      'CC': wasi_which('clang'),
+      'CC': wasi_which('wasm32-wasi-clang'),
       'CC_FOR_BUILD': 'cc',
-      'CXX': wasi_which('clang++'),
+      'CXX': wasi_which('wasm32-wasi-clang++'),
       'LD': wasi_which('wasm-ld'),
       'NM': wasi_which('llvm-nm'),
       'OBJCOPY': wasi_which('llvm-objcopy'),
@@ -231,7 +238,7 @@ def write_env_files(envs):
         envfile.write(f'}}\n')
         envfile.write(f'prepend_path "{cabal_prefix}"\n')
         envfile.write(f'prepend_path "{WASI_SDK_ROOT}/bin"\n')
-        envfile.write(f'prepend_path "{wasm_ghc_prefix}"\n')
+        envfile.write(f'prepend_path "{wasm_ghc_prefix}/bin"\n')
 
         for env, value in envs.items():
             envfile.write(f'export {env}={value}\n')
@@ -244,13 +251,18 @@ def write_env_files(envs):
             envfile.write(f'export {env}={quote(value)}\n')
 
 def install_ghc():
+    if '###unsupported###' in HOST_VARS.FLAVOUR:
+        raise Exception(
+            f'No prebuilt GHC wasm bindist with flavour "{HOST_VARS.FLAVOUR[:HOST_VARS.FLAVOUR.find("#")]}" on {HOST_VARS.HOST}. ' +
+            'You can still skip GHC and complete the setup.')
+
     print('--- Downloading ghc ---')
     if path_is_fresh(GHC_TMP_DIR):
+        # TODO: support specifying UPSTREAM_GHC_PIPELINE_ID
+        ghc_bindist = jq_autogen(HOST_VARS.GHC)
+        print(f'Installing wasm32-wasi-ghc from {ghc_bindist}')
         run_cmd(['mkdir', '-p', GHC_TMP_DIR])
-        if OS == 'Linux' and ARCH == 'x86_64':
-            run_curl(jq_autogen(HOST_VARS.GHC), GHC_TMP_DIR, pipe_to='tar xJ -C %s --strip-components=1')
-        else:
-            run_curl(jq_autogen(HOST_VARS.GHC), GHC_TMP_DIR, pipe_to='tar x --zstd -C %s --strip-components=1')
+        run_curl(ghc_bindist, GHC_TMP_DIR, pipe_to='tar xJ -C %s --no-same-owner --strip-components=1')
 
     print('--- Configuring ghc ---')
     # TODO: allow skip
@@ -264,9 +276,11 @@ def install_ghc():
 def setup_cabal():
     print('--- Downloading cabal ---')
     cabal_dest = f'{PREFIX}/cabal/bin'
-    if path_is_fresh(cabal_dest):
+    cabal_exe = f'{cabal_dest}/cabal'
+
+    if path_is_fresh(cabal_exe):
         run_cmd(['mkdir', '-p', cabal_dest])
-        run_curl(jq_autogen(HOST_VARS.CABAL), cabal_dest, pipe_to='tar xJ -C %s cabal')
+        run_curl(jq_autogen(HOST_VARS.CABAL), cabal_dest, pipe_to='tar xJ --no-same-owner -C %s cabal')
 
     print('--- Configuring cabal wrapper for WASM ---')
     wasm_cabal = f'{cabal_prefix}/wasm32-wasi-cabal'
@@ -280,7 +294,6 @@ def setup_cabal():
         with open(wasm_cabal, 'w') as f:
             f.write('#!/bin/sh\n')
 
-            cabal_exe = f'{PREFIX}/cabal/bin/cabal'
             wasm_ghc = f'{wasm_ghc_prefix}/bin/wasm32-wasi-ghc'
             wasm_hcpkg = f'{wasm_ghc_prefix}/bin/wasm32-wasi-ghc-pkg'
             wasm_hsc2hs = f'{wasm_ghc_prefix}/bin/wasm32-wasi-hsc2hs'
@@ -300,11 +313,18 @@ def setup_cabal():
         print(f'Cabal dir "{cabal_dir}" is already configured. Skipping...')
     else:
         run_cmd(['mkdir', '-p', cabal_dir])
-        if HOST_VARS.FLAVOUR not in {'9.6', '9.8', '9.10'}:
-            print(f'Flavour {HOST_VARS.FLAVOUR} requires copying config from repo')
-            run_cmd(['cp', f'{REPO}/cabal.config', f'{PREFIX}/.cabal/config'])
-        run_cmd([wasm_cabal, 'update'],
-                cwd=GHC_TMP_DIR)
+        if HOST_VARS.FLAVOUR not in {'9.6', '9.8', '9.10', '9.12'}:
+            print(f'Cabal with flavour {HOST_VARS.FLAVOUR} uses "head" config')
+            run_cmd(['cp', f'{REPO}/cabal.head.config', f'{PREFIX}/.cabal/config'])
+        elif HOST_VARS.FLAVOUR in {'9.10', '9.12'}:
+            print(f'Cabal with flavour {HOST_VARS.FLAVOUR} uses "th" config')
+            run_cmd(['cp', f'{REPO}/cabal.th.config', f'{PREFIX}/.cabal/config'])
+        else:
+            print(f'Cabal with flavour {HOST_VARS.FLAVOUR} uses "legacy" config')
+            run_cmd(['cp', f'{REPO}/cabal.legacy.config', f'{PREFIX}/.cabal/config'])
+
+    print('Updating cabal...')
+    run_cmd([wasm_cabal, 'update'], cwd=GHC_TMP_DIR)
 
 # ------ main logic ------
 

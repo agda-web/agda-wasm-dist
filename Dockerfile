@@ -4,7 +4,7 @@ ARG AGDA_BRANCH=v2.6.4.3-r1
 ARG SETUP_SCRIPT=setup-ghc-wasm.py
 ARG AGDA_PATCH=agda-wasm.patch
 
-ARG GHC_WASM_META_COMMIT=7b3caea9828966b9f9b70b715f96768adb51c052
+ARG GHC_WASM_META_COMMIT=92ff0eb8541eb0a6097922e3532c3fd44d2f7db4
 ARG GHC_WASM_FLAVOUR=9.10
 
 # ------------------------------------------------------------------------------
