@@ -55,7 +55,7 @@ index 6f4ec2095..1e68f861e 100644
      , time-compat          >= 1.9.2     && < 1.10
          -- time-compat adds needed functionality missing in time < 1.9
      , transformers         >= 0.5.5.0   && < 0.7
-+    , unix-compat          >= 0.4.3.1   && < 0.8
++    , unix-compat          >= 0.4.3.1   && < 0.7.1
      , unordered-containers >= 0.2.9.0   && < 0.3
          -- unordered-containers < 0.2.9 need base < 4.11
      , uri-encode           >= 1.5.0.4   && < 1.6
