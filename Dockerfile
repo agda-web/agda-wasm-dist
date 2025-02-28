@@ -38,8 +38,8 @@ RUN --mount=type=cache,target=/var/cache/apt \
     cd agda && \
     git apply /root/agda-wasm.patch && \
     echo "-- see: https://gitlab.haskell.org/haskell-wasm/ghc-wasm-meta/-/blob/92ff0eb8541eb0a6097922e3532c3fd44d2f7db4/tests/agda.sh" && \
-    echo "package unix-compat" >> cabal.project.local && \
-    echo "  ghc-options: -optc-Wno-error=implicit-function-declaration" >> cabal.project.local
+    echo "package unix-compat" >> cabal.project && \
+    echo "  ghc-options: -optc-Wno-error=implicit-function-declaration" >> cabal.project
 
 # ------------------------------------------------------------------------------
 
