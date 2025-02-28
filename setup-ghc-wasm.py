@@ -172,7 +172,8 @@ def write_to_github_script():
     pass
 
 # should sync with setup.sh
-cc_opts  = '-Wno-error=int-conversion -O3 -msimd128 -mnontrapping-fptoint -msign-ext -mbulk-memory -mmutable-globals -mmultivalue -mreference-types'
+# XXX: Added cc flags "-Wno-error=strict-prototypes -Wno-error=implicit-function-declaration" to unbreak some libs not covering WASM32
+cc_opts  = '-Wno-error=int-conversion -Wno-error=strict-prototypes -Wno-error=implicit-function-declaration -O3 -msimd128 -mnontrapping-fptoint -msign-ext -mbulk-memory -mmutable-globals -mmultivalue -mreference-types'
 cxx_opts = '-fno-exceptions -Wno-error=int-conversion -O3 -msimd128 -mnontrapping-fptoint -msign-ext -mbulk-memory -mmutable-globals -mmultivalue -mreference-types'
 ld_opts  = '-Wl,--error-limit=0,--keep-section=ghc_wasm_jsffi,--keep-section=target_features,--stack-first,--strip-debug '
 
