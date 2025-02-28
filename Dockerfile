@@ -36,7 +36,10 @@ RUN --mount=type=cache,target=/var/cache/apt \
     git config --global advice.detachedHead false && \
     git clone --depth=1 --branch "$AGDA_BRANCH" https://github.com/agda/agda.git /root/agda && \
     cd agda && \
-    git apply /root/agda-wasm.patch
+    git apply /root/agda-wasm.patch && \
+    echo "-- see: https://gitlab.haskell.org/haskell-wasm/ghc-wasm-meta/-/blob/92ff0eb8541eb0a6097922e3532c3fd44d2f7db4/tests/agda.sh" && \
+    echo "package unix-compat" >> cabal.project.local && \
+    echo "  ghc-options: -optc-Wno-error=implicit-function-declaration" >> cabal.project.local
 
 # ------------------------------------------------------------------------------
 
