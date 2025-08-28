@@ -4,7 +4,7 @@ ARG AGDA_BRANCH=v2.7.0.1
 ARG SETUP_SCRIPT=setup-ghc-wasm.py
 ARG AGDA_PATCH=agda-wasm.patch
 
-ARG GHC_WASM_META_COMMIT=92ff0eb8541eb0a6097922e3532c3fd44d2f7db4
+ARG GHC_WASM_META_COMMIT=a210c386d8c5b16a119cdb9b46f929f385149f68
 ARG GHC_WASM_FLAVOUR=9.10
 
 # ------------------------------------------------------------------------------
@@ -72,7 +72,7 @@ RUN --mount=type=cache,id=wasm-cabal,target=/root/.ghc-wasm/.cabal \
     mkdir ghc-wasm-meta && \
     cd ghc-wasm-meta && \
     git init && \
-    git remote add origin https://gitlab.haskell.org/ghc/ghc-wasm-meta.git && \
+    git remote add origin https://gitlab.haskell.org/haskell-wasm/ghc-wasm-meta.git && \
     git fetch --depth 1 origin "$GHC_WASM_META_COMMIT" && \
     git checkout FETCH_HEAD && \
     FLAVOUR="$GHC_WASM_FLAVOUR" python3 ../setup-ghc-wasm.py
