@@ -1,5 +1,5 @@
 ARG GHC_VER=9.10.1
-ARG AGDA_BRANCH=v2.6.4.3-r1
+ARG AGDA_BRANCH=v2.7.0.1
 
 ARG SETUP_SCRIPT=setup-ghc-wasm.py
 ARG AGDA_PATCH=agda-wasm.patch

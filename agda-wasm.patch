@@ -1,20 +1,23 @@
 diff --git a/Agda.cabal b/Agda.cabal
-index 6f4ec2095..1e68f861e 100644
+index 9a0863c886..878775326a 100644
 --- a/Agda.cabal
 +++ b/Agda.cabal
 @@ -1,7 +1,7 @@
  cabal-version:   2.4
  name:            Agda
- version:         2.6.4.3
+ version:         2.7.0.1
 -build-type:      Custom
 +build-type:      Simple
  license:         MIT
  license-file:    LICENSE
  copyright:       (c) 2005-2024 The Agda Team.
-@@ -200,13 +200,13 @@ flag optimise-heavily
- -- Setup
- ---------------------------------------------------------------------------
+@@ -194,17 +194,6 @@ flag optimise-heavily
+   description:
+     Enable some expensive optimisations when compiling Agda.
  
+--- Setup
+----------------------------------------------------------------------------
+-
 -custom-setup
 -  setup-depends:
 -    , base      >= 4.12.0.0 && < 4.21
@@ -22,55 +25,23 @@ index 6f4ec2095..1e68f861e 100644
 -    , directory >= 1.3.3.0  && < 1.4
 -    , filepath  >= 1.4.2.1  && < 1.6
 -    , process   >= 1.6.3.0  && < 1.7
-+-- custom-setup
-+--   setup-depends:
-+--     , base      >= 4.12.0.0 && < 4.21
-+--     , Cabal     >= 2.4.0.1  && < 3.13
-+--     , directory >= 1.3.3.0  && < 1.4
-+--     , filepath  >= 1.4.2.1  && < 1.6
-+--     , process   >= 1.6.3.0  && < 1.7
- 
+-
  -- Common stanzas
  ---------------------------------------------------------------------------
-@@ -358,6 +358,9 @@ library
  
-   hs-source-dirs:   src/full
- 
-+  if arch(wasm32)
-+    c-sources: src/wasi-compat/tzset.c
-+
-   -- Andreas, 2021-03-10:
-   -- All packages we depend upon should be mentioned in an unconditional
-   -- build-depends field, but additional restrictions on their
-@@ -420,7 +423,7 @@ library
-     , exceptions           >= 0.8       && < 0.11
-     , filepath             >= 1.4.2.1   && < 1.6
-     , ghc-compact          == 0.1.*
--    , gitrev               >= 1.3.1     && < 2
-+    -- , gitrev               >= 1.3.1     && < 2
-     -- hashable 1.2.0.10 makes library-test 10x
-     -- slower. The issue was fixed in hashable 1.2.1.0.
-     -- https://github.com/tibbe/hashable/issues/57.
-@@ -444,6 +447,7 @@ library
-     , time-compat          >= 1.9.2     && < 1.10
-         -- time-compat adds needed functionality missing in time < 1.9
-     , transformers         >= 0.5.5.0   && < 0.7
-+    , unix-compat          >= 0.4.3.1   && < 0.8
-     , unordered-containers >= 0.2.9.0   && < 0.3
-         -- unordered-containers < 0.2.9 need base < 4.11
-     , uri-encode           >= 1.5.0.4   && < 1.6
-@@ -451,6 +455,10 @@ library
+@@ -457,6 +446,11 @@ library
      , vector-hashtables    >= 0.1.1.1   && < 0.2
      , zlib                 >= 0.6       && < 0.8
  
 +  if arch(wasm32)
 +    build-depends:
-+      unix                 >= 2.8.0.0   && < 2.9
++      , unix-compat        >= 0.4.3.1   && < 0.8
++      , unix               >= 2.8.0.0   && < 2.9
 +
    -- We don't write upper bounds for Alex nor Happy because the
    -- `build-tool-depends` field can not be modified in Hackage.
    build-tool-depends:
-@@ -865,10 +873,12 @@ executable agda
+@@ -876,10 +870,12 @@ executable agda
    -- been idle for 0.3 s. This feature turned out to be annoying, so
    -- the idle GC is now by default turned off (-I0).
    ghc-options:
@@ -85,7 +56,7 @@ index 6f4ec2095..1e68f861e 100644
  ---------------------------------------------------------------------------
  
 diff --git a/src/full/Agda/Interaction/AgdaTop.hs b/src/full/Agda/Interaction/AgdaTop.hs
-index 4b12c5dba..d8eb73b06 100644
+index 4b12c5dba1..ce9fa59c02 100644
 --- a/src/full/Agda/Interaction/AgdaTop.hs
 +++ b/src/full/Agda/Interaction/AgdaTop.hs
 @@ -1,4 +1,5 @@
@@ -94,17 +65,19 @@ index 4b12c5dba..d8eb73b06 100644
  
  module Agda.Interaction.AgdaTop
      ( repl
-@@ -22,11 +23,22 @@ import Agda.Interaction.Options
- import Agda.TypeChecking.Monad
- import qualified Agda.TypeChecking.Monad.Benchmark as Bench
+@@ -19,6 +20,11 @@ import Agda.Interaction.Response as R
+ import Agda.Interaction.InteractionTop
+ import Agda.Interaction.Options
  
 +#if defined(wasm32_HOST_ARCH)
 +import Agda.Utils.IO                ( catchIO )
 +import System.Posix.IO              ( stdInput, setFdOption, FdOption(..) )
 +#endif
 +
- ----------------------------------
+ import Agda.TypeChecking.Monad
+ import qualified Agda.TypeChecking.Monad.Benchmark as Bench
  
+@@ -27,6 +33,12 @@ import qualified Agda.TypeChecking.Monad.Benchmark as Bench
  -- | 'repl' is a fake ghci interpreter for both the Emacs the JSON frontend
  repl :: InteractionOutputCallback -> String -> TCM () -> TCM ()
  repl callback prompt setup = do
@@ -118,7 +91,7 @@ index 4b12c5dba..d8eb73b06 100644
        hSetBuffering stdout LineBuffering
        hSetBuffering stdin  LineBuffering
 diff --git a/src/full/Agda/Interaction/Library.hs b/src/full/Agda/Interaction/Library.hs
-index 3b813194b..41b17e2b9 100644
+index 48117e9397..5e0a5d2222 100644
 --- a/src/full/Agda/Interaction/Library.hs
 +++ b/src/full/Agda/Interaction/Library.hs
 @@ -61,6 +61,7 @@ import qualified Data.Text as T
@@ -126,117 +99,65 @@ index 3b813194b..41b17e2b9 100644
  import System.FilePath
  import System.Environment
 +import System.PosixCompat.Files ( FileStatus, getFileStatus, fileID, deviceID )
+ import System.IO.Error ( isPermissionError )
  
  import Agda.Interaction.Library.Base
- import Agda.Interaction.Library.Parse
-@@ -215,6 +216,7 @@ findProjectConfig' root = do
-           let conf = ProjectConfig root files 0
-           storeCachedProjectConfig root conf
-           return conf
-+      `catchIO` (\ e -> do return DefaultProjectConfig)
- 
-   where
-     -- Note that "going up" one directory is OS dependent
-@@ -232,8 +234,15 @@ findProjectConfig' root = do
+@@ -238,9 +239,15 @@ findProjectConfig' root = do
      --   operating systems L/.. refers to R.
      upPath :: FilePath -> IO (Maybe FilePath)
      upPath root = do
+-      up <- canonicalizePath $ root </> ".."
+-      if up == root then return Nothing else return $ Just up
 +      stat <- getFileStatus root
 +      _upPath root (deviceID stat) (fileID stat)
-+
+ 
 +    _upPath root dev ino = do
-       up <- canonicalizePath $ root </> ".."
--      if up == root then return Nothing else return $ Just up
++      up <- canonicalizePath $ root </> ".."
 +      if up == root then return Nothing else do
 +        statUp <- getFileStatus up
 +        if deviceID statUp == dev && fileID statUp == ino then
 +          return Nothing else return $ Just up
  
- 
  -- | Get project root
+ 
 diff --git a/src/full/Agda/TypeChecking/Serialise/Base.hs b/src/full/Agda/TypeChecking/Serialise/Base.hs
-index a66359e3e..4ca1ae257 100644
+index a66359e3e3..22434c211f 100644
 --- a/src/full/Agda/TypeChecking/Serialise/Base.hs
 +++ b/src/full/Agda/TypeChecking/Serialise/Base.hs
-@@ -5,6 +5,8 @@
- {-# LANGUAGE MagicHash            #-}
- {-# LANGUAGE UnboxedTuples        #-}
+@@ -55,6 +55,8 @@ import Agda.Utils.Monad
+ import Agda.Utils.Pointer
+ import Agda.Utils.TypeLevel
  
-+#include "MachDeps.h"
++#include <MachDeps.h>
 +
- {-
- András, 2023-10-2:
- 
-@@ -58,6 +60,17 @@ import Agda.Utils.TypeLevel
  -- | Constructor tag (maybe omitted) and argument indices.
  data Node = Empty | Cons !Int32 !Node deriving Eq
  
-+ahashFoldMagic :: Word
-+ahashSalt :: Int
-+
-+#if (WORD_SIZE_IN_BITS == 32)
-+ahashFoldMagic = 2654435741
-+ahashSalt = 1627380737
-+#else
-+ahashFoldMagic = 11400714819323198549
-+ahashSalt = 3032525626373534813
-+#endif
-+
- instance Hashable Node where
-   -- Adapted from https://github.com/tkaitchuck/aHash/wiki/AHash-fallback-algorithm
-   hashWithSalt h n = fromIntegral (go (fromIntegral h) n) where
-@@ -67,13 +80,13 @@ instance Hashable Node where
+@@ -67,13 +69,25 @@ instance Hashable Node where
      foldedMul (W# x) (W# y) = case timesWord2# x y of (# hi, lo #) -> W# (xor# hi lo)
  
      combine :: Word -> Word -> Word
 -    combine x y = foldedMul (xor x y) 11400714819323198549
-+    combine x y = foldedMul (xor x y) ahashFoldMagic
++    combine x y = foldedMul (xor x y)  factor where
++      -- We use a version of fibonacci hashing, where our multiplier is the
++      -- nearest prime to 2^64/phi or 2^32/phi. See https://stackoverflow.com/q/4113278.
++#if WORD_SIZE_IN_BITS == 64
++      factor = 11400714819323198549
++#else
++      factor = 2654435741
++#endif
  
      go :: Word -> Node -> Word
      go !h Empty       = h
      go  h (Cons n ns) = go (combine h (fromIntegral n)) ns
  
 -  hash = hashWithSalt 3032525626373534813
-+  hash = hashWithSalt ahashSalt
++  hash = hashWithSalt seed where
++#if WORD_SIZE_IN_BITS == 64
++      seed = 3032525626373534813
++#else
++      seed = 1103515245
++#endif
  
  instance B.Binary Node where
  
-diff --git a/src/full/Agda/VersionCommit.hs b/src/full/Agda/VersionCommit.hs
-index ce53083a9..40b0e704f 100644
---- a/src/full/Agda/VersionCommit.hs
-+++ b/src/full/Agda/VersionCommit.hs
-@@ -9,7 +9,9 @@
- 
- module Agda.VersionCommit where
- 
-+#if !defined(wasm32_HOST_ARCH)
- import Development.GitRev
-+#endif
- 
- import Agda.Version
- 
-@@ -22,11 +24,16 @@ commitInfo
-   | hash == "UNKNOWN" = Nothing
-   | otherwise         = Just $ abbrev hash ++ dirty
-   where
-+#if defined(wasm32_HOST_ARCH)
-+    hash = "UNKNOWN"
-+    dirty = ""
-+#else
-     hash = $(gitHash)
- 
-     -- Check if any tracked files have uncommitted changes
-     dirty | $(gitDirtyTracked) = "-dirty"
-           | otherwise          = ""
-+#endif
- 
-     -- Abbreviate a commit hash while keeping it unambiguous
-     abbrev = take 7
-diff --git a/src/wasi-compat/tzset.c b/src/wasi-compat/tzset.c
-new file mode 100644
-index 000000000..90ffa0ea6
---- /dev/null
-+++ b/src/wasi-compat/tzset.c
-@@ -0,0 +1,2 @@
-+// a shim for WASI missing tzset function
-+int tzset() { return 0; }
