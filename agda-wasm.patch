@@ -161,3 +161,34 @@ index a66359e3e3..22434c211f 100644
  
  instance B.Binary Node where
  
+diff --git a/src/full/Agda/VersionCommit.hs b/src/full/Agda/VersionCommit.hs
+index ce53083a99..40b0e704f6 100644
+--- a/src/full/Agda/VersionCommit.hs
++++ b/src/full/Agda/VersionCommit.hs
+@@ -9,7 +9,9 @@
+ 
+ module Agda.VersionCommit where
+ 
++#if !defined(wasm32_HOST_ARCH)
+ import Development.GitRev
++#endif
+ 
+ import Agda.Version
+ 
+@@ -22,11 +24,16 @@ commitInfo
+   | hash == "UNKNOWN" = Nothing
+   | otherwise         = Just $ abbrev hash ++ dirty
+   where
++#if defined(wasm32_HOST_ARCH)
++    hash = "UNKNOWN"
++    dirty = ""
++#else
+     hash = $(gitHash)
+ 
+     -- Check if any tracked files have uncommitted changes
+     dirty | $(gitDirtyTracked) = "-dirty"
+           | otherwise          = ""
++#endif
+ 
+     -- Abbreviate a commit hash while keeping it unambiguous
+     abbrev = take 7
