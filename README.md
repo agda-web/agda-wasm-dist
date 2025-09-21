@@ -56,6 +56,7 @@ The repo contains the following version combinations:
 |              | 9.10.0      | As tag [v2.6.4.3-r1-ghc9.10.1-r3](https://github.com/agda-web/agda-wasm-dist/releases/tag/v2.6.4.3-r1-ghc9.10.1-r3).
 |              | 9.10.1      | In branch [agda-2.6.4.3-r1](https://github.com/agda-web/agda-wasm-dist/tree/agda-2.6.4.3-r1).
 | 2.7.0.1      | 9.10.1      | In branch [agda-2.7.0.1](https://github.com/agda-web/agda-wasm-dist/tree/agda-2.7.0.1).
+| 2.8.0        | 9.10.2      | In branch [agda-2.8.0](https://github.com/agda-web/agda-wasm-dist/tree/agda-2.8.0).
 
 ## Known issues
 
