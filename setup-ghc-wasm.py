@@ -92,7 +92,7 @@ def host_specific():
             'x86_64-linux',
             'wasi-sdk',
             'x86_64-linux',
-            'dist/wasi-sdk-26.0-x86_64-linux.tar.gz',
+            'dist/wasi-sdk-27.0-x86_64-linux.tar.gz',
             'wasmtime',
             'nodejs',
             'cabal',
@@ -108,7 +108,7 @@ def host_specific():
             'aarch64-linux',
             'wasi-sdk-aarch64-linux',
             'aarch64-linux',
-            'dist/wasi-sdk-26.0-aarch64-linux.tar.gz',
+            'dist/wasi-sdk-27.0-aarch64-linux.tar.gz',
             'wasmtime_aarch64_linux',
             'nodejs_aarch64_linux',
             'cabal_aarch64_linux',
@@ -124,7 +124,7 @@ def host_specific():
             'aarch64-apple-darwin',
             'wasi-sdk-aarch64-darwin',
             'aarch64-darwin',
-            'dist/wasi-sdk-26.0-arm64-macos.tar.gz',
+            'dist/wasi-sdk-27.0-arm64-macos.tar.gz',
             'wasmtime_aarch64_darwin',
             'nodejs_aarch64_darwin',
             'cabal_aarch64_darwin',
@@ -139,7 +139,7 @@ def host_specific():
             'x86_64-apple-darwin',
             'wasi-sdk-x86_64-darwin',
             'x86_64-darwin',
-            'dist/wasi-sdk-26.0-arm64-macos.tar.gz',
+            'dist/wasi-sdk-27.0-arm64-macos.tar.gz',
             'wasmtime_x86_64_darwin',
             'nodejs_x86_64_darwin',
             'cabal_x86_64_darwin',
@@ -196,8 +196,14 @@ def setup_wasi_sdk():
         run_curl(jq_autogen('binaryen'), 'binaryen', pipe_to='tar xz -C %s --no-same-owner --strip-components=1')
         run_cmd(['cp', 'binaryen/bin/wasm-opt', f'{WASI_SDK_ROOT}/bin'])
 
+    print('--- Setting up nodejs ---')
+    if path_is_fresh('nodejs'):
+        run_cmd(['mkdir', '-p', 'nodejs'])
+        run_curl(jq_autogen('nodejs'), 'nodejs', pipe_to='tar xJ -C %s --no-same-owner --strip-components=1')
+        run_cmd(['cp', '-r', 'nodejs', PREFIX])
+
 # utilities are NOT included, please install them by yourself:
-#   nodejs, playwright, wabt, wasmtime
+#   playwright, wabt, wasmtime
 
 def setup_wasm_run():
     pass
@@ -275,6 +281,7 @@ def write_env_files(envs):
         envfile.write(f'prepend_path "{cabal_prefix}"\n')
         envfile.write(f'prepend_path "{WASI_SDK_ROOT}/bin"\n')
         envfile.write(f'prepend_path "{wasm_ghc_prefix}/bin"\n')
+        envfile.write(f'prepend_path "{PREFIX}/nodejs/bin"\n')
 
         for env, value in envs.items():
             envfile.write(f'export {env}={value}\n')
