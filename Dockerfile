@@ -81,7 +81,7 @@ RUN --mount=type=cache,id=wasm-cabal,target=/root/.ghc-wasm/.cabal \
     cd agda && \
     . /root/.ghc-wasm/env && \
     wasm32-wasi-cabal update && \
-    wasm32-wasi-cabal configure -O2 && \
+    wasm32-wasi-cabal configure -O2 --flag=use-xdg-data-home && \
     echo "-- see: https://gitlab.haskell.org/haskell-wasm/ghc-wasm-meta/-/blob/92ff0eb8541eb0a6097922e3532c3fd44d2f7db4/tests/agda.sh" && \
     echo "package unix-compat" >> cabal.project.local && \
     echo "  ghc-options: -optc-Wno-error=implicit-function-declaration" >> cabal.project.local && \
