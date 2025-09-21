@@ -196,8 +196,14 @@ def setup_wasi_sdk():
         run_curl(jq_autogen('binaryen'), 'binaryen', pipe_to='tar xz -C %s --no-same-owner --strip-components=1')
         run_cmd(['cp', 'binaryen/bin/wasm-opt', f'{WASI_SDK_ROOT}/bin'])
 
+    print('--- Setting up nodejs ---')
+    if path_is_fresh('nodejs'):
+        run_cmd(['mkdir', '-p', 'nodejs'])
+        run_curl(jq_autogen('nodejs'), 'nodejs', pipe_to='tar xJ -C %s --no-same-owner --strip-components=1')
+        run_cmd(['cp', '-r', 'nodejs', PREFIX])
+
 # utilities are NOT included, please install them by yourself:
-#   nodejs, playwright, wabt, wasmtime
+#   playwright, wabt, wasmtime
 
 def setup_wasm_run():
     pass
@@ -275,6 +281,7 @@ def write_env_files(envs):
         envfile.write(f'prepend_path "{cabal_prefix}"\n')
         envfile.write(f'prepend_path "{WASI_SDK_ROOT}/bin"\n')
         envfile.write(f'prepend_path "{wasm_ghc_prefix}/bin"\n')
+        envfile.write(f'prepend_path "{PREFIX}/nodejs/bin"\n')
 
         for env, value in envs.items():
             envfile.write(f'export {env}={value}\n')
