@@ -1,5 +1,5 @@
 diff --git a/Agda.cabal b/Agda.cabal
-index 83235557e1..0aeb0c28b4 100644
+index f23c301156..ce7c2e19a9 100644
 --- a/Agda.cabal
 +++ b/Agda.cabal
 @@ -517,7 +517,6 @@ library
@@ -55,7 +55,7 @@ index 83235557e1..0aeb0c28b4 100644
      Agda.Version
      Agda.VersionCommit
  
-@@ -1014,12 +1025,15 @@ executable agda-mode
+@@ -1014,8 +1025,11 @@ executable agda-mode
      , base                 >= 4.13.0.0  && < 4.22
      , bytestring           >= 0.10.10.1 && < 0.13
      , directory            >= 1.3.6.0   && < 1.4
@@ -64,14 +64,10 @@ index 83235557e1..0aeb0c28b4 100644
      , gitrev               >= 1.3.1     && < 2
      , process              >= 1.6.9.0   && < 1.7
      , template-haskell     >= 2.15.0.0  && < 2.24
- 
++
 +  if !arch(wasm32)
 +    build-depends:
 +      , filelock           >= 0.1.1.5   && < 0.2
-+
- -- Cabal testsuite integration has some serious bugs, but we
- -- can still make it work. See also:
- -- https://github.com/haskell/cabal/issues/1938
 diff --git a/src/full/Agda/Interaction/AgdaTop.hs b/src/full/Agda/Interaction/AgdaTop.hs
 index 5bdfedf961..a1dc8edb1e 100644
 --- a/src/full/Agda/Interaction/AgdaTop.hs
