@@ -18,7 +18,7 @@ You need to specify a handful of configurations for it to work correctly:
 
 - **The global config directory**: The value can be obtained via flag `--print-agda-app-dir`, serving as the source of Agda's [library management system](https://agda.readthedocs.io/en/latest/tools/package-system.html#package-system). The default path is `$HOME/.config/agda`, and you can override with the enviroment variable `AGDA_DIR`.
 
-- **Built-in library path**: The value can be obtained via flag `--print-agda-data-dir`, but you can override it with the environment variable `Agda_datadir`. It must contain a directory structure `lib/prim/Agda/...`. The content can be copied from Agda's source tree under `src/data` or from the Docker image. \
+- **Built-in library path**: The value can be obtained via flag `--print-agda-data-dir`, but you can override it with the environment variable `Agda_datadir`. It must contain a directory structure `lib/prim/Agda/...`. The content can be copied from Agda's source tree under `src/data` or from the Docker image or be populated with [`agda --setup`](https://agda.readthedocs.io/en/v2.8.0/tools/command-line-options.html#cmdoption-setup) (requires Agda v2.8.0+). \
   Tip: The minimal requirement to run Agda is these three files (`lib/prim/`) `agda-builtins.agda-lib`, `Agda/Primitive.agda` and `Agda/Primitive/Cubical.agda`.
 
 ### Quirks of interaction mode
