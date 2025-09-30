@@ -9,6 +9,7 @@ on:
       - .github/workflows/deploy.yml
       - agda-wasm.patch
       - setup-ghc-wasm.py
+  workflow_dispatch:
 
 env:
   REGISTRY: ghcr.io
