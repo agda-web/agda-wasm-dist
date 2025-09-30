@@ -53,10 +53,19 @@ def jq_autogen(name):
 # TODO: remove pipe_to to mandate all output to be saved
 def run_curl(url, dest, *, pipe_to=None, **kwargs):
     cmd = f'curl -f -L --retry 5 {quote(url)}'
-    tail = '-o %s'
-    if pipe_to is not None:
-        tail = '| ' + pipe_to
-    return run_cmd(cmd + ' ' + (tail % quote(dest)), **kwargs)
+    if pipe_to is None:
+        return run_cmd(cmd + ' -o ' + quote(dest), **kwargs)
+    else:
+        return run_cmd(cmd + ' -o /tmp/tmpfile && ' + (pipe_to % ('/tmp/tmpfile', quote(dest))), **kwargs)
+
+def curl_upstream_wasi_sdk_pipeline_id(upstreamWasiSdkPipelineId, targetJobName):
+    url = f'https://gitlab.haskell.org/api/v4/projects/3212/pipelines/{upstreamWasiSdkPipelineId}/jobs?scope[]=success'
+    output = run_cmd(f'curl {quote(url)}')
+    jobs = json.loads(output)
+    for job in jobs:
+        if job['name'] == targetJobName:
+            return job['id']
+    raise Error(f'Cannot find the job with name "{targetJobName}" from the upstream WASI SDK pipeline.')
 
 def curl_upstream_wasi_sdk_pipeline_id(upstreamWasiSdkPipelineId, targetJobName):
     url = f'https://gitlab.haskell.org/api/v4/projects/3212/pipelines/{upstreamWasiSdkPipelineId}/jobs?scope[]=success'
@@ -175,7 +184,7 @@ def setup_wasi_sdk():
         wasi_sdk_bindist = determine_wasi_sdk_bindist()
         print(f'Installing wasi-sdk from {wasi_sdk_bindist}')
         run_cmd(['mkdir', '-p', WASI_SDK_ROOT])
-        run_curl(wasi_sdk_bindist, WASI_SDK_ROOT, pipe_to='tar xz -C %s --no-same-owner --strip-components=1')
+        run_curl(wasi_sdk_bindist, WASI_SDK_ROOT, pipe_to='tar xzf %s -C %s --no-same-owner --strip-components=1')
 
     print('--- Setting up ffi-wasm ---')
     ffi_wasm_dest = f'out/libffi-wasm'
@@ -193,13 +202,13 @@ def setup_wasi_sdk():
     print('--- Setting up binaryen ---')
     if path_is_fresh('binaryen/bin'):
         run_cmd(['mkdir', '-p', 'binaryen'])
-        run_curl(jq_autogen('binaryen'), 'binaryen', pipe_to='tar xz -C %s --no-same-owner --strip-components=1')
+        run_curl(jq_autogen('binaryen'), 'binaryen', pipe_to='tar xzf %s -C %s --no-same-owner --strip-components=1')
         run_cmd(['cp', 'binaryen/bin/wasm-opt', f'{WASI_SDK_ROOT}/bin'])
 
     print('--- Setting up nodejs ---')
     if path_is_fresh('nodejs'):
         run_cmd(['mkdir', '-p', 'nodejs'])
-        run_curl(jq_autogen('nodejs'), 'nodejs', pipe_to='tar xJ -C %s --no-same-owner --strip-components=1')
+        run_curl(jq_autogen('nodejs'), 'nodejs', pipe_to='tar xJf %s -C %s --no-same-owner --strip-components=1')
         run_cmd(['cp', '-r', 'nodejs', PREFIX])
 
 # utilities are NOT included, please install them by yourself:
@@ -305,7 +314,7 @@ def install_ghc():
         ghc_bindist = jq_autogen(HOST_VARS.GHC)
         print(f'Installing wasm32-wasi-ghc from {ghc_bindist}')
         run_cmd(['mkdir', '-p', GHC_TMP_DIR])
-        run_curl(ghc_bindist, GHC_TMP_DIR, pipe_to='tar xJ -C %s --no-same-owner --strip-components=1')
+        run_curl(ghc_bindist, GHC_TMP_DIR, pipe_to='tar xJf %s -C %s --no-same-owner --strip-components=1')
 
     print('--- Configuring ghc ---')
     # TODO: allow skip
@@ -324,7 +333,7 @@ def setup_cabal():
 
     if path_is_fresh(cabal_exe):
         run_cmd(['mkdir', '-p', cabal_dest])
-        run_curl(jq_autogen(HOST_VARS.CABAL), cabal_dest, pipe_to='tar xJ --no-same-owner -C %s cabal')
+        run_curl(jq_autogen(HOST_VARS.CABAL), cabal_dest, pipe_to='tar xJf %s --no-same-owner -C %s cabal')
 
     print('--- Configuring cabal wrapper for WASM ---')
     wasm_cabal = f'{cabal_prefix}/wasm32-wasi-cabal'

@@ -1,10 +1,10 @@
-ARG GHC_VER=9.10.1
+ARG HOST_GHC_VER=9.10.1
 ARG AGDA_BRANCH=v2.7.0.1
 
 ARG SETUP_SCRIPT=setup-ghc-wasm.py
 ARG AGDA_PATCH=agda-wasm.patch
 
-ARG GHC_WASM_META_COMMIT=a210c386d8c5b16a119cdb9b46f929f385149f68
+ARG GHC_WASM_META_COMMIT=78c87e9236a547fcb439db6927391df625af16fb
 ARG GHC_WASM_FLAVOUR=9.10
 
 # ------------------------------------------------------------------------------
@@ -40,9 +40,9 @@ RUN --mount=type=cache,target=/var/cache/apt \
 
 # ------------------------------------------------------------------------------
 
-ARG GHC_VER
+ARG HOST_GHC_VER
 
-FROM haskell:${GHC_VER}-slim-buster AS local-cabal
+FROM haskell:${HOST_GHC_VER}-slim-buster AS local-cabal
 
 ENV CABAL_DIR=/root/.cabal
 
