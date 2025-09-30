@@ -1,10 +1,10 @@
-ARG GHC_VER=9.10.1
+ARG HOST_GHC_VER=9.10.1
 ARG AGDA_BRANCH=v2.6.4.3-r1
 
 ARG SETUP_SCRIPT=setup-ghc-wasm.py
 ARG AGDA_PATCH=agda-wasm.patch
 
-ARG GHC_WASM_META_COMMIT=92ff0eb8541eb0a6097922e3532c3fd44d2f7db4
+ARG GHC_WASM_META_COMMIT=78c87e9236a547fcb439db6927391df625af16fb
 ARG GHC_WASM_FLAVOUR=9.10
 
 # ------------------------------------------------------------------------------
@@ -40,9 +40,9 @@ RUN --mount=type=cache,target=/var/cache/apt \
 
 # ------------------------------------------------------------------------------
 
-ARG GHC_VER
+ARG HOST_GHC_VER
 
-FROM haskell:${GHC_VER}-slim-buster AS local-cabal
+FROM haskell:${HOST_GHC_VER}-slim-buster AS local-cabal
 
 ENV CABAL_DIR=/root/.cabal
 
@@ -72,7 +72,7 @@ RUN --mount=type=cache,id=wasm-cabal,target=/root/.ghc-wasm/.cabal \
     mkdir ghc-wasm-meta && \
     cd ghc-wasm-meta && \
     git init && \
-    git remote add origin https://gitlab.haskell.org/ghc/ghc-wasm-meta.git && \
+    git remote add origin https://gitlab.haskell.org/haskell-wasm/ghc-wasm-meta.git && \
     git fetch --depth 1 origin "$GHC_WASM_META_COMMIT" && \
     git checkout FETCH_HEAD && \
     FLAVOUR="$GHC_WASM_FLAVOUR" python3 ../setup-ghc-wasm.py

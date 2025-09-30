@@ -2,13 +2,17 @@ import os
 import subprocess
 import shlex
 from shlex import quote
-from shutil import which
+from shutil import Error, which
 import sys
 import json
 from collections import namedtuple
 from functools import partial
 
+# This script is a manual translation of ghc-wasm-meta's setup.sh.
+# The snapshot of this script is based on is at (accessed around May 2025):
+# https://gitlab.haskell.org/haskell-wasm/ghc-wasm-meta/-/blob/fe5573f28327d12a1c47ec61d6bbe0cc9d7983dd/setup.sh
 
+# TODO: sed
 for cmd in ['curl', 'unzip', 'tar', 'xz']:
     if which(cmd) is None:
         print(f'This script requires {cmd}')
@@ -17,15 +21,27 @@ for cmd in ['curl', 'unzip', 'tar', 'xz']:
 print_err = partial(print, file=sys.stderr)
 HostVars = namedtuple('HostVars', 'HOST WASI_SDK WASI_SDK_JOB_NAME WASI_SDK_ARTIFACT_PATH WASMTIME NODEJS CABAL BINARYEN GHC FLAVOUR')
 
-def run_cmd(arg, **kwargs):
-    is_shell = isinstance(arg, str)
+REPO = os.environ['PWD']
+
+def _log_cmd(is_shell, arg, **kwargs):
     if is_shell:
         print_err('+', arg, kwargs)
     else:
         print_err('+', shlex.join(arg), kwargs)
+
+def run_cmd(arg, **kwargs):
+    is_shell = isinstance(arg, str)
+    _log_cmd(is_shell, arg, **kwargs)
     return subprocess.check_output(
         arg, **kwargs, shell=is_shell, universal_newlines=True
     ).strip()
+
+def run_cmd_and_get_exit_code(arg, **kwargs):
+    is_shell = isinstance(arg, str)
+    _log_cmd(is_shell, arg, **kwargs)
+    return subprocess.run(
+        arg, **kwargs, shell=is_shell, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+    ).returncode
 
 def jq_autogen(name):
     # cmd = f'''jq -r '."{name}".url' {REPO}/autogen.json'''
@@ -36,10 +52,19 @@ def jq_autogen(name):
 
 def run_curl(url, dest, *, pipe_to=None, **kwargs):
     cmd = f'curl -f -L --retry 5 {quote(url)}'
-    tail = '-o %s'
-    if pipe_to is not None:
-        tail = '| ' + pipe_to
-    return run_cmd(cmd + ' ' + (tail % quote(dest)), **kwargs)
+    if pipe_to is None:
+        return run_cmd(cmd + ' -o ' + quote(dest), **kwargs)
+    else:
+        return run_cmd(cmd + ' -o /tmp/tmpfile && ' + (pipe_to % ('/tmp/tmpfile', quote(dest))), **kwargs)
+
+def curl_upstream_wasi_sdk_pipeline_id(upstreamWasiSdkPipelineId, targetJobName):
+    url = f'https://gitlab.haskell.org/api/v4/projects/3212/pipelines/{upstreamWasiSdkPipelineId}/jobs?scope[]=success'
+    output = run_cmd(f'curl {quote(url)}')
+    jobs = json.loads(output)
+    for job in jobs:
+        if job['name'] == targetJobName:
+            return job['id']
+    raise Error(f'Cannot find the job with name "{targetJobName}" from the upstream WASI SDK pipeline.')
 
 def path_is_fresh(s):
     if os.path.exists(s):
@@ -52,7 +77,6 @@ OS = run_cmd('uname -s')
 ARCH = run_cmd('uname -m')
 PREFIX = os.environ.get('PREFIX', run_cmd('realpath ' + quote(os.path.expandvars('$HOME/.ghc-wasm'))))
 WASI_SDK_ROOT = f'{PREFIX}/wasi-sdk'
-REPO = os.environ['PWD']
 
 wasm_ghc_prefix = f'{PREFIX}/wasm32-wasi-ghc'
 cabal_prefix = f'{PREFIX}/wasm32-wasi-cabal'
@@ -67,7 +91,7 @@ def host_specific():
             'x86_64-linux',
             'wasi-sdk',
             'x86_64-linux',
-            'dist/wasi-sdk-25.0-x86_64-linux.tar.gz',
+            'dist/wasi-sdk-27.0-x86_64-linux.tar.gz',
             'wasmtime',
             'nodejs',
             'cabal',
@@ -83,7 +107,7 @@ def host_specific():
             'aarch64-linux',
             'wasi-sdk-aarch64-linux',
             'aarch64-linux',
-            'dist/wasi-sdk-25.0-aarch64-linux.tar.gz',
+            'dist/wasi-sdk-27.0-aarch64-linux.tar.gz',
             'wasmtime_aarch64_linux',
             'nodejs_aarch64_linux',
             'cabal_aarch64_linux',
@@ -99,7 +123,7 @@ def host_specific():
             'aarch64-apple-darwin',
             'wasi-sdk-aarch64-darwin',
             'aarch64-darwin',
-            'dist/wasi-sdk-25.0-arm64-macos.tar.gz',
+            'dist/wasi-sdk-27.0-arm64-macos.tar.gz',
             'wasmtime_aarch64_darwin',
             'nodejs_aarch64_darwin',
             'cabal_aarch64_darwin',
@@ -114,12 +138,12 @@ def host_specific():
             'x86_64-apple-darwin',
             'wasi-sdk-x86_64-darwin',
             'x86_64-darwin',
-            'dist/wasi-sdk-25.0-arm64-macos.tar.gz',
+            'dist/wasi-sdk-27.0-arm64-macos.tar.gz',
             'wasmtime_x86_64_darwin',
             'nodejs_x86_64_darwin',
             'cabal_x86_64_darwin',
             'binaryen_x86_64_darwin',
-            'wasm32-wasi-ghc-gmp-x86_64-darwin',
+            'wasm32-wasi-ghc-gmp-x86_64-darwin',  # no prebuilt ghc available
             'gmp')
 
     print(f'Host not supported: ({OS}, {ARCH}, {flavour})')
@@ -127,17 +151,30 @@ def host_specific():
 
 
 HOST_VARS = host_specific()
+# unused; to be used in wasm-run's setup
+# BSD sed does not accept long options such as "--version".
+# SED_IS_GNU = run_cmd_and_get_exit_code('sed --version') == 0
 GHC_TMP_DIR = f'{REPO}/ghc.{HOST_VARS.FLAVOUR}'
 
+# TODO: workdir; currently it unzips everything to the project dir and also use them to
+# avoid redownloading, but it may cause problems on readonly filesystems.
+# Since we do not have popd
+
+def determine_wasi_sdk_bindist():
+    UPSTREAM_WASI_SDK_PIPELINE_ID = os.environ.get('UPSTREAM_WASI_SDK_PIPELINE_ID', None)
+    if UPSTREAM_WASI_SDK_PIPELINE_ID is not None:
+        jobId = curl_upstream_wasi_sdk_pipeline_id(UPSTREAM_WASI_SDK_PIPELINE_ID, HOST_VARS.WASI_SDK_JOB_NAME)
+        return f'https://gitlab.haskell.org/haskell-wasm/wasi-sdk/-/jobs/{jobId}/artifacts/raw/{HOST_VARS.WASI_SDK_ARTIFACT_PATH}'
+    else:
+        return jq_autogen(HOST_VARS.WASI_SDK)
 
 def setup_wasi_sdk():
     print('--- Setting up WASI SDK ---')
     if path_is_fresh(WASI_SDK_ROOT):
-        # TODO: support specifying UPSTREAM_WASI_SDK_JOB_ID
-        wasi_sdk_bindist = jq_autogen(HOST_VARS.WASI_SDK)
+        wasi_sdk_bindist = determine_wasi_sdk_bindist()
         print(f'Installing wasi-sdk from {wasi_sdk_bindist}')
         run_cmd(['mkdir', '-p', WASI_SDK_ROOT])
-        run_curl(wasi_sdk_bindist, WASI_SDK_ROOT, pipe_to='tar xz -C %s --no-same-owner --strip-components=1')
+        run_curl(wasi_sdk_bindist, WASI_SDK_ROOT, pipe_to='tar xzf %s -C %s --no-same-owner --strip-components=1')
 
     print('--- Setting up ffi-wasm ---')
     ffi_wasm_dest = f'out/libffi-wasm'
@@ -155,14 +192,17 @@ def setup_wasi_sdk():
     print('--- Setting up binaryen ---')
     if path_is_fresh('binaryen/bin'):
         run_cmd(['mkdir', '-p', 'binaryen'])
-        run_curl(jq_autogen('binaryen'), 'binaryen', pipe_to='tar xz -C %s --no-same-owner --strip-components=1')
+        run_curl(jq_autogen('binaryen'), 'binaryen', pipe_to='tar xzf %s -C %s --no-same-owner --strip-components=1')
         run_cmd(['cp', 'binaryen/bin/wasm-opt', f'{WASI_SDK_ROOT}/bin'])
 
-# utilities are NOT included, please install them by yourself:
-#   nodejs, wabt, wasmtime
+    print('--- Setting up nodejs ---')
+    if path_is_fresh('nodejs'):
+        run_cmd(['mkdir', '-p', 'nodejs'])
+        run_curl(jq_autogen('nodejs'), 'nodejs', pipe_to='tar xJf %s -C %s --no-same-owner --strip-components=1')
+        run_cmd(['cp', '-r', 'nodejs', PREFIX])
 
-def setup_proot():
-    pass
+# utilities are NOT included, please install them by yourself:
+#   playwright, wabt, wasmtime
 
 def setup_wasm_run():
     pass
@@ -172,8 +212,8 @@ def write_to_github_script():
     pass
 
 # should sync with setup.sh
-cc_opts  = '-Wno-error=int-conversion -O3 -msimd128 -mnontrapping-fptoint -msign-ext -mbulk-memory -mmutable-globals -mmultivalue -mreference-types'
-cxx_opts = '-fno-exceptions -Wno-error=int-conversion -O3 -msimd128 -mnontrapping-fptoint -msign-ext -mbulk-memory -mmutable-globals -mmultivalue -mreference-types'
+cc_opts  = '-Wno-error=int-conversion -O3 -mcpu=lime1 -mreference-types -msimd128 -mtail-call'
+cxx_opts = '-fno-exceptions -Wno-error=int-conversion -O3 -mcpu=lime1 -mreference-types -msimd128 -mtail-call'
 ld_opts  = '-Wl,--error-limit=0,--keep-section=ghc_wasm_jsffi,--keep-section=target_features,--stack-first,--strip-debug '
 
 _EXTRA_ENVS = {
@@ -185,6 +225,7 @@ _EXTRA_ENVS = {
   'CONF_GCC_LINKER_OPTS_STAGE1': ld_opts,
   # 'CONFIGURE_ARGS': "",
   # 'CROSS_EMULATOR': f'{PREFIX}/wasm-run/bin/wasm-run.mjs',
+  # 'NODE_PATH': f'{PREFIX}/nodejs/lib/node_modules'
 }
 
 # --prefix is defined part of the configure command
@@ -239,6 +280,7 @@ def write_env_files(envs):
         envfile.write(f'prepend_path "{cabal_prefix}"\n')
         envfile.write(f'prepend_path "{WASI_SDK_ROOT}/bin"\n')
         envfile.write(f'prepend_path "{wasm_ghc_prefix}/bin"\n')
+        envfile.write(f'prepend_path "{PREFIX}/nodejs/bin"\n')
 
         for env, value in envs.items():
             envfile.write(f'export {env}={value}\n')
@@ -262,7 +304,7 @@ def install_ghc():
         ghc_bindist = jq_autogen(HOST_VARS.GHC)
         print(f'Installing wasm32-wasi-ghc from {ghc_bindist}')
         run_cmd(['mkdir', '-p', GHC_TMP_DIR])
-        run_curl(ghc_bindist, GHC_TMP_DIR, pipe_to='tar xJ -C %s --no-same-owner --strip-components=1')
+        run_curl(ghc_bindist, GHC_TMP_DIR, pipe_to='tar xJf %s -C %s --no-same-owner --strip-components=1')
 
     print('--- Configuring ghc ---')
     # TODO: allow skip
@@ -270,8 +312,9 @@ def install_ghc():
     run_cmd(
         f'. {quote(envpath)} && truncate -s0 ghc.log && ' +
         f'./configure {configure_args} --prefix={quote(wasm_ghc_prefix)} | tee ghc.log && ' +
-        f'exec make install | tee ghc.log',
+        f'RelocatableBuild=YES exec make install | tee ghc.log',
         cwd=GHC_TMP_DIR)
+    # TODO: wasm32-wasi-ghc-pkg recache
 
 def setup_cabal():
     print('--- Downloading cabal ---')
@@ -280,7 +323,7 @@ def setup_cabal():
 
     if path_is_fresh(cabal_exe):
         run_cmd(['mkdir', '-p', cabal_dest])
-        run_curl(jq_autogen(HOST_VARS.CABAL), cabal_dest, pipe_to='tar xJ --no-same-owner -C %s cabal')
+        run_curl(jq_autogen(HOST_VARS.CABAL), cabal_dest, pipe_to='tar xJf %s --no-same-owner -C %s cabal')
 
     print('--- Configuring cabal wrapper for WASM ---')
     wasm_cabal = f'{cabal_prefix}/wasm32-wasi-cabal'
@@ -293,6 +336,7 @@ def setup_cabal():
 
         with open(wasm_cabal, 'w') as f:
             f.write('#!/bin/sh\n')
+            # echo 'PREFIX=$(realpath "$(dirname "$0")"/../..)'
 
             wasm_ghc = f'{wasm_ghc_prefix}/bin/wasm32-wasi-ghc'
             wasm_hcpkg = f'{wasm_ghc_prefix}/bin/wasm32-wasi-ghc-pkg'
