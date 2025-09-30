@@ -93,7 +93,13 @@ RUN . /root/.ghc-wasm/env && \
     wasm-opt --version && \
     wasm-opt /opt/agda.wasm -Oz -o /opt/agda-opt.wasm
 
-# FIXME: type check built-ins (we have not executed Setup.hs)
+# type check built-ins as done in Setup.hs
+RUN . /root/.ghc-wasm/env && \
+    export WASM_RUN=/root/ghc-wasm-meta/wasm-run/wasm-run.mjs && \
+    sed -i '0,/^[[:space:]]*env:.*/s||env: { ...process.env, Agda_datadir: "/opt" },|' "$WASM_RUN" && \
+    find /opt/lib/prim/Agda -type f | sed 's|^\(.*\)$|IOTCM "\1" None Indirect (Cmd_load "\1" [])\nIOTCM "\1" None Indirect (Cmd_no_metas)|' > /tmp/iotcms && \
+    node "$WASM_RUN" /opt/agda.wasm --interaction --interaction-exit-on-error -Werror -v0 < /tmp/iotcms
+
 # TODO: emacs mode
 # TODO: standard library
 
