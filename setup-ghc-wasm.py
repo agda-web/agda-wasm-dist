@@ -213,8 +213,8 @@ def write_to_github_script():
     pass
 
 # should sync with setup.sh
-cc_opts  = '-Wno-error=int-conversion -O3 -mcpu=lime1 -mreference-types -msimd128 -mtail-call'
-cxx_opts = '-fno-exceptions -Wno-error=int-conversion -O3 -mcpu=lime1 -mreference-types -msimd128 -mtail-call'
+cc_opts  = '-Wno-error=int-conversion -O3 -mcpu=lime1 -mreference-types -msimd128'
+cxx_opts = '-fno-exceptions -Wno-error=int-conversion -O3 -mcpu=lime1 -mreference-types -msimd128'
 ld_opts  = '-Wl,--error-limit=0,--keep-section=ghc_wasm_jsffi,--keep-section=target_features,--stack-first,--strip-debug '
 
 _EXTRA_ENVS = {
